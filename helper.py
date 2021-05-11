@@ -1,14 +1,12 @@
 import warnings
 from time import time
 from datetime import datetime
-
 from bitcoinutils.setup import setup
 
 
 def setup_network(input_network):
     # check network chosen
-    if input_network not in ['regtest', 'testnet', 'mainet']:
-        parser.print_help()
+    if input_network not in ['regtest', 'testnet']:
         raise ValueError('Target network is invalid')
     else:
         setup(input_network)

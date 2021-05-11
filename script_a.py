@@ -1,11 +1,9 @@
 import argparse
-from bitcoinutils.transactions import Sequence, Locktime
-from bitcoinutils.constants import TYPE_ABSOLUTE_TIMELOCK, TYPE_RELATIVE_TIMELOCK
-from bitcoinutils.keys import P2pkhAddress, P2shAddress, PrivateKey, PublicKey
+from bitcoinutils.transactions import Sequence
+from bitcoinutils.constants import TYPE_ABSOLUTE_TIMELOCK
+from bitcoinutils.keys import P2shAddress, PrivateKey, PublicKey
 from bitcoinutils.script import Script
 from helper import check_time_lock, handle_input_keys, setup_network
-
-from automated_tests import test_timelock
 
 
 def parse_command_line_arguments():

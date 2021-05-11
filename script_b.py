@@ -1,7 +1,6 @@
 import argparse
 import requests
 import json
-from time import time
 from bitcoinutils.utils import to_satoshis
 from bitcoinutils.transactions import Sequence, TxInput, TxOutput, Transaction, Locktime
 from bitcoinutils.constants import TYPE_ABSOLUTE_TIMELOCK, TYPE_RELATIVE_TIMELOCK
@@ -104,12 +103,12 @@ def send_to_p2pkh_address(private_key, timelock, p2sh_unspent_transactions, p2pk
     tx = Transaction(list_of_txin, [txout], lock.for_transaction())
 
     print('\nRaw unsigned transaction: {}'.format(tx.serialize()))
-
-    # create signature
-    sig = private_key.sign_input(tx, 0, redeem_script)
     
     # sign txins
-    for txin in list_of_txin:
+    for index, txin in enumerate(list_of_txin):
+        # create signature
+        sig = private_key.sign_input(tx, index, redeem_script)
+
         txin.script_sig = Script([sig, private_key.get_public_key().to_hex(), redeem_script.to_hex()])
 
     signed_tx = tx.serialize()
