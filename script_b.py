@@ -3,7 +3,7 @@ import requests
 import json
 from bitcoinutils.utils import to_satoshis
 from bitcoinutils.transactions import Sequence, TxInput, TxOutput, Transaction, Locktime
-from bitcoinutils.constants import TYPE_ABSOLUTE_TIMELOCK, TYPE_RELATIVE_TIMELOCK
+from bitcoinutils.constants import TYPE_ABSOLUTE_TIMELOCK
 from bitcoinutils.script import Script
 from bitcoinutils.proxy import NodeProxy
 from bitcoinutils.keys import PrivateKey, P2pkhAddress
@@ -13,7 +13,10 @@ from helper import setup_network
 
 
 def parse_command_line_arguments():
-    # python script_b.py -h will print usage info in the console
+    """Parse execution parameters
+
+    Help: python script_b.py -h, will print usage info in the console
+    """
     parser = argparse.ArgumentParser(description='Spend all UTXOs from P2SH address')
 
     parser.add_argument('--network', help='Network to use', type=str, required=True)
@@ -21,16 +24,23 @@ def parse_command_line_arguments():
     parser.add_argument('--private_key', help='Private key of P2SH address', type=str, required=True)
     parser.add_argument('--timelock', help='Locktime value used to generate P2SH address', type=int, required=True)
     parser.add_argument('--p2pkh', help='P2PKH address to send Bitcoins to (destination)', type=str, required=True)
+    parser.add_argument('--rpc_user', help='RPC user of running node', type=str, required=True)
+    parser.add_argument('--rpc_pass', help='RPC password of running node', type=str, required=True)
 
     return parser.parse_args()
 
 
-def setup_node_proxy(user='zisis', password='pass'):
+def setup_node_proxy(user, password):
+    """Create NodeProxy object to communicate with bitcoin node through RPC
+    """
+
     return NodeProxy(user, password).get_proxy()
 
 
 def get_recommended_fees():
-    # transaction fees satoshis/vbytes
+    """Retrieves current recommended fastest fees from bitcoinfees API in satoshis
+    """
+
     uri = 'https://bitcoinfees.earn.com/api/v1/fees/recommended'
 
     response = requests.get(uri)
@@ -47,12 +57,17 @@ def get_recommended_fees():
 
 
 def calculate_transaction_size(n_of_txin, n_of_txout):
-    # transaction size in bytes based on inputs and outputs for non segwit addresses
+    """Transaction size in bytes based on inputs and outputs for non segwit addresses
+    """
+
     return (n_of_txin * 180) + (n_of_txout * 34) + 10 + n_of_txin
 
 
 
 def recreate_redeem_script(private_key, timelock):
+    """Recreate redeem script as it was originally created in script_a
+    """
+
     p2pkh_addr = private_key.get_public_key().get_address()
 
     seq = Sequence(TYPE_ABSOLUTE_TIMELOCK, timelock)
@@ -63,6 +78,9 @@ def recreate_redeem_script(private_key, timelock):
 
 
 def is_transaction_valid(proxy, raw_transaction_hex):
+    """Check if transaction created is valid
+    """
+
     assessment = proxy.testmempoolaccept(raw_transaction_hex)[0] 
 
     if not assessment['allowed']:
@@ -71,7 +89,10 @@ def is_transaction_valid(proxy, raw_transaction_hex):
         return assessment['allowed']
 
 
-def send_to_p2pkh_address(private_key, timelock, p2sh_unspent_transactions, p2pkh_address):
+def send_to_p2pkh_address(private_key, timelock, p2sh_unspent_transactions, p2pkh_address, proxy):
+    """Sends all available UTXOs found in P2SH to a P2PKH address
+    """
+
     redeem_script, seq = recreate_redeem_script(private_key, timelock)
 
     list_of_txin = []
@@ -100,6 +121,7 @@ def send_to_p2pkh_address(private_key, timelock, p2sh_unspent_transactions, p2pk
     # create locktime to use in transaction
     lock = Locktime(timelock)
 
+    # create transaction from input(s) and output transactions and locktime object
     tx = Transaction(list_of_txin, [txout], lock.for_transaction())
 
     print('\nRaw unsigned transaction: {}'.format(tx.serialize()))
@@ -118,10 +140,13 @@ def send_to_p2pkh_address(private_key, timelock, p2sh_unspent_transactions, p2pk
     if is_transaction_valid(proxy, [signed_tx]):
         print('\nTransaction is valid!')
 
+        # if transaction is valid send it to the blockchain
         proxy.sendrawtransaction(signed_tx)
 
 
 def get_UTXOs(proxy, p2sh):
+    """Parse unspent UTXOs of the provided P2SH address 
+    """
     # add p2sh address to your wallet to watch its transactions
     proxy.importaddress(p2sh)
 
@@ -134,22 +159,43 @@ def get_UTXOs(proxy, p2sh):
     return p2sh_unspent_transactions
 
 
-if __name__ == "__main__":
+def main():
+    # parse input script arguments
     args = parse_command_line_arguments()
 
     # setup network
     setup_network(args.network)
 
     # setup node proxy
-    proxy = setup_node_proxy()
+    proxy = setup_node_proxy(args.rpc_user, args.rpc_pass)
 
+    # init private key and destination P2PKH address objects
     private_key = PrivateKey(args.private_key)
     p2pkh = P2pkhAddress(args.p2pkh)
 
-    # if P2SH address has no UTXOs terminate script else send all of them to another address
+    # if P2SH address has no UTXOs terminate script else send all of them to destination address
     p2sh_unspent_transactions = get_UTXOs(proxy, args.p2sh)
 
     if len(p2sh_unspent_transactions) == 0:
         exit('P2SH address has no UTXOs available to be spent')
     else:
-        send_to_p2pkh_address(private_key, args.timelock, p2sh_unspent_transactions, p2pkh)
+        send_to_p2pkh_address(private_key, args.timelock, p2sh_unspent_transactions, p2pkh, proxy)
+
+
+if __name__ == "__main__":
+    """Testing
+    
+    PRIVATE KEY (wif compressed) 923zDqT2JS6ggmhWKXUsvaFnHTEFPd7XKGXQfy1FvungqDCMiLE
+    PUBLIC KEY (hex) 028b7f1ea5b1a092028e653916ab66d3cb5027d950a5b5d8ee1f3d8a579f1c266c
+
+    Script execution example (using P2SH address created by script a)
+    python script_b.py --network=regtest \
+                       --p2sh=2N7ZMhYhdKtvkkgR2nV6n9KaAcbgGy4tH5D \ 
+                       --private_key=923zDqT2JS6ggmhWKXUsvaFnHTEFPd7XKGXQfy1FvungqDCMiLE \ 
+                       --timelock=150 \
+                       --p2pkh={destination_address} \ 
+                       --rpc_user={rpcuser} \
+                       --rpc_pass={rpcpassword}
+    """
+
+    main()

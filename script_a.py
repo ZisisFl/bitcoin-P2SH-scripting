@@ -3,11 +3,14 @@ from bitcoinutils.transactions import Sequence
 from bitcoinutils.constants import TYPE_ABSOLUTE_TIMELOCK
 from bitcoinutils.keys import P2shAddress, PrivateKey, PublicKey
 from bitcoinutils.script import Script
-from helper import check_time_lock, handle_input_keys, setup_network
+from helper import check_time_lock, check_input_keys, setup_network
 
 
 def parse_command_line_arguments():
-    # python script_a.py -h will print usage info in the console
+    """Parse execution parameters
+
+    Help: python script_a.py -h, will print usage info in the console
+    """
     parser = argparse.ArgumentParser(description='Generate a P2SH address with absolute timelock')
 
     parser.add_argument('--network', help='Network to use', type=str, required=True)
@@ -19,6 +22,10 @@ def parse_command_line_arguments():
 
 
 def create_timelocked_p2sh_address(public_key, private_key, timelock):
+    """Creates a timelocked P2SH address based on the timelock value provided
+    """
+    
+    # create a P2pkhAddress object from the input key given
     if public_key:
         p2pkh_addr = PublicKey(public_key).get_address()
     elif private_key:
@@ -44,7 +51,7 @@ def main():
     check_time_lock(args.timelock)
 
     # check keys provided
-    handle_input_keys(args.public_key, args.private_key)
+    check_input_keys(args.public_key, args.private_key)
     
     # check network input and setup
     setup_network(args.network)
@@ -55,11 +62,14 @@ def main():
 
 
 if __name__ == "__main__":
-    # For testing
-    # PRIVATE KEY (wif compressed) 923zDqT2JS6ggmhWKXUsvaFnHTEFPd7XKGXQfy1FvungqDCMiLE
-    # PUBLIC KEY (hex) 028b7f1ea5b1a092028e653916ab66d3cb5027d950a5b5d8ee1f3d8a579f1c266c
+    """Testing
+    
+    PRIVATE KEY (wif compressed) 923zDqT2JS6ggmhWKXUsvaFnHTEFPd7XKGXQfy1FvungqDCMiLE
+    PUBLIC KEY (hex) 028b7f1ea5b1a092028e653916ab66d3cb5027d950a5b5d8ee1f3d8a579f1c266c
 
-    # execute script
-    # python script_a.py --network=regtest --public_key=028b7f1ea5b1a092028e653916ab66d3cb5027d950a5b5d8ee1f3d8a579f1c266c --timelock=150
-
+    Script execution example
+    python script_a.py --network=regtest \
+                       --public_key=028b7f1ea5b1a092028e653916ab66d3cb5027d950a5b5d8ee1f3d8a579f1c266c \
+                       --timelock=150
+    """
     main()
