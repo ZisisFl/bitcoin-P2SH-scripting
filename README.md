@@ -4,7 +4,12 @@ where all funds sent to it are locked until a specific time, specified either by
 or UNIX Epoch time; other than the time locking the redeem script is equivalent to P2PKH.
 The second program spends all funds from this address.
 
+This project is based on the [bitcoin-utils](https://pypi.org/project/bitcoin-utils/) Python library
+
 ## Dependencies
+- Python 3
+- Bitcoin core node running
+
 In order to reproduce this project it is highly recommended to create a dedicated Python 3 virtual environment
 ```sh
 python3 -m venv bitcoin_venv
@@ -12,6 +17,7 @@ source bitcoin_venv/bin/activate
 pip install -r /path/to/requirements.txt
 ```
 
+## Scripts
 ### Script a (P2SH creator)
 Script a creates (and prints in the console) a P2SH address with an absolute time lock expressed either in block height, 
 or UNIX Epoch time
@@ -57,22 +63,22 @@ python script_b.py --network=regtest \
 In order to replicate the use case scenario of these 2 scripts you can find bellow
 a sequence of bitcoin-cli commands used on regtest network starting at blockheight 0.
 
-Assume your private key is 923zDqT2JS6ggmhWKXUsvaFnHTEFPd7XKGXQfy1FvungqDCMiLE  
-Then your public key would be 028b7f1ea5b1a092028e653916ab66d3cb5027d950a5b5d8ee1f3d8a579f1c266c
+Assume your **private key** is **923zDqT2JS6ggmhWKXUsvaFnHTEFPd7XKGXQfy1FvungqDCMiLE**  
+Then your **public key** would be **028b7f1ea5b1a092028e653916ab66d3cb5027d950a5b5d8ee1f3d8a579f1c266c**
 
 - Start a bitcoin node (regtest)  
 ```sh
 bitcoind
 ```
 
-- Execute script a:
+- Execute script a to generate a P2SH address
 ```sh
 python script_a.py --network=regtest \
                    --public_key=028b7f1ea5b1a092028e653916ab66d3cb5027d950a5b5d8ee1f3d8a579f1c266c \
                    --timelock=150
 ```
-Given the above public key and an absolute timelock of 150 blocks the following P2SH address should be creted
-2N7ZMhYhdKtvkkgR2nV6n9KaAcbgGy4tH5D
+Given the above public key and an absolute timelock of 150 blocks the following **P2SH** address should be creted
+**2N7ZMhYhdKtvkkgR2nV6n9KaAcbgGy4tH5D**
 
 - Get blockcount
 ```sh
@@ -93,7 +99,7 @@ bitcoin-cli loadwallet "mywallet"
 bitcoin-cli getwalletinfo
 ```
 
-- Crate an address (sender address) and generate some bitcoins, in order to send them to the PS2H address
+- Create an address (sender address) and generate some bitcoins, in order to send them to the PS2H address
 ```sh
 bitcoin-cli getnewaddress "sender_address" legacy
 ```
@@ -128,7 +134,7 @@ else
 bitcoin-cli sendtoaddress 2N7ZMhYhdKtvkkgR2nV6n9KaAcbgGy4tH5D 1
 ```
 
-- Check of transactions in mempool
+- Check transactions in mempool
 ```sh
 bitcoin-cli getrawmempool
 ```
@@ -138,7 +144,7 @@ Generate 1 block to complete transactions made above
 bitcoin-cli generatetoaddress 1 {sender_address}
 ```
 
-- Spend UTXOs from P2SH to P2PKH address (this should fail as the current blockcount is < that the one set in the timelock)
+- Try spending UTXOs from P2SH to P2PKH address (this should fail as the current blockcount is < that the one set in the timelock)
 ```sh
 python script_b.py --network=regtest \
                    --p2sh=2N7ZMhYhdKtvkkgR2nV6n9KaAcbgGy4tH5D \ 
